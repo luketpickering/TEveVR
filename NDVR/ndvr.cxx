@@ -1,75 +1,52 @@
 #include <iostream>
 
-#include <GLFW/glfw3.h>
+#include "TFile.h"
+#include "TGeoManager.h"
 
-static void error_callback(int error, const char* description){
-    std::cout << description << std::endl;
+#include "WindowLoop.hxx"
+#include "ReadGeom.hxx"
+
+#include "CLITools.hxx"
+
+namespace CLIOpts {
+  std::string GeomFileName;
+
+  void SetOpts(){
+      CLIArgs::AddOpt("-g", "--Geom-File", true,
+      [&] (std::string const &opt) -> bool {
+        std::cout << "\t--Attempting to read ROOT geometry from file: "
+          << opt << std::endl;
+          GeomFileName = opt;
+        return true;
+      }, true,
+      [](){},
+      "ROOT file to read geometry from.");
+
+  }
 }
-
-int ZRot = 0;
-
-static void key_callback(GLFWwindow* window, int key,
-  int scancode, int action, int mods) {
-  if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS){
-    glfwSetWindowShouldClose(window, GL_TRUE);
-  }
-  if (key == GLFW_KEY_W && (action == GLFW_PRESS || action == GLFW_REPEAT)){
-     ZRot = (ZRot + 2)%360;
-  }
-  if (key == GLFW_KEY_S && (action == GLFW_PRESS || action == GLFW_REPEAT)){
-     ZRot = (ZRot - 2)%360;
-  }
-}
-
 
 int main(int argc, char const * argv[]){
 
-  if (!glfwInit()){
-    exit(EXIT_FAILURE);
+  try {
+    CLIOpts::SetOpts();
+  } catch (std::exception const & e){
+    std::cerr << "[ERROR]: " << e.what() << std::endl;
+    return 1;
   }
 
-  GLFWwindow* window;
-  glfwSetErrorCallback(error_callback);
-  window = glfwCreateWindow(640, 480, "My Title", NULL, NULL);
-
-  if(!window){
-    glfwTerminate();
-    exit(EXIT_FAILURE);
+  CLIArgs::AddArguments(argc,argv);
+  if(!CLIArgs::HandleArgs()){
+    CLIArgs::SayRunLike();
+    return 1;
   }
 
-  glfwMakeContextCurrent(window);
-  glfwSwapInterval(1);
-  glfwSetKeyCallback(window, key_callback);
+  // open the geometry file
+  TFile* GeomFile = new TFile(CLIOpts::GeomFileName.c_str());
 
-  while (!glfwWindowShouldClose(window)){
+  TGeoManager* geo = ReadGeomFromFile(GeomFile);
+  (void)geo;
+  WindowLoop();
 
-    float ratio;
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    ratio = width / (float) height;
-    glViewport(0, 0, width, height);
-    glClear(GL_COLOR_BUFFER_BIT);
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(-ratio, ratio, -1.f, 1.f, 1.f, -1.f);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
-    glRotatef(float(ZRot), 0.f, 0.f, 1.f);
-    glBegin(GL_TRIANGLES);
-    glColor3f(1.f, 0.f, 0.f);
-    glVertex3f(-0.6f, -0.4f, 0.f);
-    glColor3f(0.f, 1.f, 0.f);
-    glVertex3f(0.6f, -0.4f, 0.f);
-    glColor3f(0.f, 0.f, 1.f);
-    glVertex3f(0.f, 0.6f, 0.f);
-    glEnd();
-
-    glfwSwapBuffers(window);
-    glfwPollEvents();
-  }
-
-   glfwDestroyWindow(window);
-
-  glfwTerminate();
-  exit(EXIT_SUCCESS);
+  GeomFile->Close();
+  return 0;
 }

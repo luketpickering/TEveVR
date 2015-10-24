@@ -1,0 +1,9 @@
+[submodule "NDVR/cmake"]
+	path = NDVR/cmake
+	url = git@github.com:Kitware/CMake.git
+[submodule "NDVR/glfw"]
+	path = NDVR/glfw
+	url = git@github.com:glfw/glfw.git
+[submodule "NDVR/utils"]
+	path = NDVR/utils
+	url = git@github.com:luketpickering/lukes-utils.git
